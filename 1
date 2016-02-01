@@ -1,0 +1,331 @@
+import java.util.Scanner;
+
+public class MultiDimArray {
+
+	static Scanner sc = new Scanner(System.in);
+
+	public static void main(String[] args) {
+
+		while (true) {
+
+			System.out
+					.print("Выберите номер задания 0-17 и нажмите Enter. Для выхода введите любое другое число: ");
+			int choice = sc.nextInt();// считываем целое число
+			switch (choice) {
+			case 0:
+				System.out.println("Gismeteo");
+				gismeteo();
+				break;
+			case 1:
+				System.out.println("Task # 1");
+				f1();
+				break;
+			case 2:
+				System.out.println("Task # 2");
+				f2();
+				break;
+			case 3:
+				System.out.println("Task # 3");
+				f3();
+				break;
+			case 4:
+				System.out.println("Task # 4");
+				f4();
+				break;
+			case 5:
+				System.out.println("Task # 5");
+				f5();
+				break;
+			case 6:
+				System.out.println("Task # 6");
+				f6();
+				break;
+			case 7:
+				System.out.println("Task # 7");
+				f7();
+				break;
+			case 8:
+				System.out.println("Task # 8");
+				f8();
+				break;
+			case 9:
+				System.out.println("Task # 9");
+				f9();
+				break;
+			case 10:
+				System.out.println("Task # 10");
+				f10();
+				break;
+			case 11:
+				System.out.println("Task # 11");
+				f11();
+				break;
+			case 12:
+				System.out.println("Task # 12");
+				f12();
+				break;
+			case 13:
+				System.out.println("Task # 13");
+				f13();
+				break;
+			case 14:
+				System.out.println("Task # 14");
+				f14();
+				break;
+			case 15:
+				System.out.println("Task # 15");
+				f15();
+				break;
+			case 16:
+				System.out.println("Task # 16");
+				f16();
+				break;
+			case 17:
+				System.out.println("Task # 17");
+				f17();
+				break;
+			default:
+				System.out
+						.println("Вы не выбрали ни одного пункта - Идем на выход!");
+				System.out.println("Работа завершена...");
+				return;
+			}
+		}
+
+	}
+
+	// Gismeteo
+	public static void gismeteo() {
+		double[] maxArray = { 2.2, 2.7, 6.6, 13, 19.5, 24, 27, 26.5, 21, 15,
+				8.4, 3.7 };
+		double[] avArray = { -0.5, -0.2, 3.5, 9.4, 15.6, 20, 22.6, 22.3, 17.2,
+				11.6, 5.7, 1.1 };
+		double[] minArray = { -2.8, -2.6, 1, 6.6, 12.1, 16.3, 18.5, 18.2, 13.5,
+				8.6, 3.2, -1.2 };
+
+		double av1 = 0, av2 = 0, av3 = 0;
+		for (int i = 0; i < 12; i++) { // определим суммы температур по макс,
+										// средн и мин показателям
+			av1 += maxArray[i];
+			av2 += avArray[i];
+			av3 += minArray[i];
+		}
+		System.out
+				.printf("Среднегодовая максимальная температура = %.2f градусов по Цельсию\n",
+						av1 / 12);
+		System.out
+				.printf("Среднегодовая средняя температура = %.2f градусов по Цельсию\n",
+						av2 / 12);
+		System.out
+				.printf("Среднегодовая минимальная температура = %.2f градусов по Цельсию\n",
+						av3 / 12);
+
+		// найдем максимальный перепад средней температуры между соседними
+		// месяцами
+		double max = 0;
+		int month = 0;
+		for (int i = 0; i < avArray.length - 1; i++) {
+			if (Math.abs(avArray[i] - avArray[i + 1]) > max)
+				max = Math.abs(avArray[i] - avArray[i + 1]);
+			month = i;
+		}
+		System.out.println("Максимальный перепад между " + month + " и "
+				+ (month + 1) + " месяцами");
+	}
+
+	// Task 1
+	public static void f1() {
+		System.out.print("Введите количество строк -");
+		int M = sc.nextInt();
+		System.out.print("Введите количество столбцов -  ");
+		int N = sc.nextInt();
+		double[][] mas = new double[M][N];
+		double sum = 0;
+		int i, j, imin = 0, jmin = 0, imax = 0, jmax = 0;
+		for (i = 0; i < M; i++) {
+			for (j = 0; j < N; j++) {
+				mas[i][j] = Math.random() * 20;
+				System.out.printf("%.2f\t", mas[i][j]);
+				sum += mas[i][j];
+				if (mas[i][j] < mas[imin][jmin]) {
+					imin = i;
+					jmin = j;
+				}
+				if (mas[i][j] > mas[imax][jmax]) {
+					imax = i;
+					jmax = j;
+				}
+			}
+			System.out.println();
+		}
+
+		System.out.printf("Сумма элементов массива = %.2f\n", sum);
+		System.out.printf("Среднее арифметическое элементов массива = %.2f\n",
+				sum / M / N);
+		System.out.printf("Минимальный элемент mas[%d][%d] = %.2f\n", imin,
+				jmin, mas[imin][jmin]);
+		System.out.printf("Максимальный элемент mas[%d][%d] = %.2f\n", imax,
+				jmax, mas[imax][jmax]);
+
+	}
+
+	// Task 2
+	public static void f2() {
+		// Т.к. речь пойдет о главной и побочной диагоналях, работаем с
+		// квадратной матрицей
+		System.out.print("Введите размер квадратной матрицы -");
+		int N = sc.nextInt();
+		double[][] mas = new double[N][N];
+		int i, j;
+		double sum1 = 0, sum2 = 0;
+
+		// сформируем матрицу и распечатаем ее элементы
+		for (i = 0; i < N; i++) {
+			for (j = 0; j < N; j++) {
+				mas[i][j] = Math.random() * 20;
+				System.out.printf("%.2f   ", mas[i][j]);
+			}
+			System.out.println();
+		}
+
+		// найдем суммы
+		for (i = 0; i < N; i++) {
+			sum1 += mas[i][i];
+			sum2 += mas[i][N - i - 1];
+		}
+		System.out.printf("Сумма элементов главной диагонали = %.2f\n", sum1);
+		System.out.printf("Сумма элементов побочной диагонали = %.2f\n", sum2);
+	}
+
+	// Task 3
+	public static void f3() {
+		System.out.print("Введите количество строк -");
+		int M = sc.nextInt();
+		System.out.print("Введите количество столбцов -  ");
+		int N = sc.nextInt();
+		double[][] mas = new double[M][N];
+		int kol1 = 0, kol2 = 0;
+		int i, j;
+		
+		// формируем матрицу и считаем количество положительных и отрицательных элементов
+		for (i = 0; i < M; i++) {
+			for (j = 0; j < N; j++) {
+				mas[i][j] = Math.random() * 20 - 10;
+				System.out.printf("%.2f\t", mas[i][j]);
+				if (mas[i][j] > 0)
+					kol1++;
+				else if (mas[i][j] < 0)
+					kol2++;
+			}
+			System.out.println();
+		}
+		System.out.println("Количество положительных элементов - " + kol1);
+		System.out.println("Количество отрицательных элементов - " + kol2);
+		System.out.println("Количество нулевых элементов - " + (M*N-kol1-kol2));
+	}
+
+	// Task 4
+	public static void f4() {
+		System.out.print("Введите количество строк -");
+		int M = sc.nextInt();
+		System.out.print("Введите количество столбцов -  ");
+		int N = sc.nextInt();
+		double[][] mas = new double[M][N];
+		double sum;
+		int i, j;
+		
+		// формируем матрицу и распечатываем ее
+		for (i = 0; i < M; i++) {
+			for (j = 0; j < N; j++) {
+				mas[i][j] = Math.random() * 20;
+				System.out.printf("%.2f\t", mas[i][j]);
+			}
+			System.out.println();
+		}
+		
+		// найдем построчные суммы элементов
+		for (i = 0; i < M; i++) {
+			sum = 0;
+			for (j = 0; j < N; j++) {
+				sum += mas[i][j];
+			}
+			System.out.println("Строка " + i + ": сумма элементов - " + sum);
+		}
+		
+		// найдем постолбцовые суммы элементов
+		for (j = 0; j < N; j++) {
+			sum = 0;
+			for (i = 0; i < M; i++) {
+				sum += mas[i][j];
+			}
+			System.out.println("Столбец " + j + ": сумма элементов - " + sum);
+		}
+
+	}
+
+	// Task 5
+	public static void f5() {
+
+	}
+
+	// Task 6
+	public static void f6() {
+
+	}
+
+	// Task 7
+	public static void f7() {
+		System.out.println("Введите число A");
+
+	}
+
+	// Task 8
+	public static void f8() {
+		System.out.println("Полученное число - 1");
+	}
+
+	// Task 9
+	public static void f9() {
+
+	}
+
+	// Task 10
+	public static void f10() {
+
+	}
+
+	// Task 11
+	public static void f11() {
+
+	}
+
+	// Task 12
+	public static void f12() {
+
+	}
+
+	// Task 13
+	public static void f13() {
+
+	}
+
+	// Task 14
+	public static void f14() {
+
+	}
+
+	// Task 15
+	public static void f15() {
+
+	}
+
+	// Task 16
+	public static void f16() {
+
+	}
+
+	// Task 17
+	public static void f17() {
+
+	}
+}
