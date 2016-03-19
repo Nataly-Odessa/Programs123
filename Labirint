@@ -1,0 +1,534 @@
+package JavaFXApplication4;
+
+
+import java.io.File;
+
+import javafx.scene.input.KeyEvent;
+import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.application.*;
+import javafx.scene.*;
+import javafx.scene.image.*;
+import javafx.scene.layout.*;
+import javafx.stage.*;
+import javafx.geometry.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.input.KeyCode;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+import javafx.scene.media.MediaView;
+
+public class JavaFXApplication4 extends Application {
+
+    public static void main(String[] args) {
+        launch(args); // по сути, запуск метода start
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        options(primaryStage); // первоначальные настройки приложения
+        generateMaze(); // создание лабиринта
+        showMaze(); // показ лабиринта
+        gameProcess(); // начало игрового процесса (управление стрелками и тд.) 
+    }
+
+    //[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+    //][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][
+    //[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+    /// ПЕРЕМЕННЫЕ КЛАССА, которые будут доступны во всех методах:
+    int height = 40; // высота лабиринта (количество строк)
+    int width = 60; // ширина лабиринта (количество столбцов в каждой строке)
+    int gatheredMedals = 0; // собранные медали
+    int medals = 0; // число медалей в лабиринте
+    int health = 100; // здоровье персонажа
+    boolean flagMedicine = true; // можно или нет собирать здоровье, true-можно,false-нельзя
+    int old_x, old_y; // сюда нужно вернуть здоровье, которое нельзя собирать
+    int energy = 500; // первоначально 500 единиц энергии
+    int steps = 0; // число перемещений
+    boolean flagCoffee = true; // можно или нет пить кофе, true-можно,false-нельзя
+    boolean putCoffeeBack = false; // положить ли кофе на место
+    int energyForKick = 10; // затраты энергии при ударе ногой
+    int leftEnergy = energyForKick - 1; // пинок отнимает left_energy + 1
+    int coffeeEnergy = 25; // столько энергии добавляет чашка кофе
+    int medicinePlus = 5; // столько здоровья добавляет таблетка
+    int maxSteps = 10; // число перемещений после принятия лекарства, начиная с которогоможно пить кофе 
+    int energyForBomb = 49; // энергия, которая тратится на установку бомбы
+    int energyForBlaster = 20; // энергия, которая тратится на выстрел из бластера
+    int radiusKick = 1; // радиус действия пинка
+    int radiusBomb = 3; // радиус действия бомбы
+    int direction; // 0 - right, 1 - left, 2 - up, 3 - down
+    int enemyCount = 0; // текущее количество врагов
+    boolean baseMusic = true; // играет или основная фоновая музыка
+    String musicBomb = "/sound/bomb.mp3";
+    String musicKick = "/sound/kick.mp3";
+    String musicBase = "/sound/basicMusic.mp3";
+
+    enum GameObject {
+
+        HALL, WALL, CHAR, MEDAL, ENEMY, MEDICINE, COFFEE, BOMB,// ENEMY2, BOSS ...
+    };
+
+    GameObject[][] maze = new GameObject[height][width];
+
+    ImageView[][] images = new ImageView[height][width]; // массив ссылок
+    // на элементы управления, на которых будут размещены картинки
+
+    // пути к картинкам
+    Image hall = new Image("/img/hall.png");
+    Image wall = new Image("/img/wall.png");
+    Image character = new Image("/img/char.png");
+    Image medal = new Image("/img/cash2.png");
+    Image enemy = new Image("/img/enemy.png");
+    Image medicine = new Image("/img/medicine.png");
+    Image coffee = new Image("/img/coffee.png");
+    Image bomb = new Image("/img/bomb.png");
+
+    GridPane layout; // менеджер компоновки. по сути, это панель, на которую
+    // определённым образом выкладываются различные элементы управления
+
+    Stage stage; // ссылка на окно приложения
+    Scene scene; // ссылка на клиентскую область окна
+
+    Random r = new Random();
+
+    Media media;
+    MediaPlayer mediaPlayer;
+
+    Media mediaBomb;
+    MediaPlayer mediaPlayerBomb;
+
+    int smileX = 0;
+    int smileY = 2; // стартовая позиция игрового персонажика
+
+    public void musicOn(String s) {
+        // play music
+        media = new Media(JavaFXApplication4.class.getResource(s).toString());
+        mediaPlayer = new MediaPlayer(media);
+        mediaPlayer.play();
+    }
+
+    public void musicOff() {
+        mediaPlayer.stop();
+    }
+
+    public void options(Stage primaryStage) {
+        // play basic music
+        musicOn("/sound/basicMusic.mp3");
+
+        ////////////////////////////////////////////////////////////////////////
+        /// настройки окна
+        stage = primaryStage;
+        stage.setTitle("Java FX Maze: собрано" + gatheredMedals + " медалей, осталось здоровья - " + health + " %, энергии - " + energy + " юнитов, живых врагов - " + enemyCount); // установка текста в заголовке окна
+        stage.setResizable(false); // размеры окна нельзя будет изменить
+        stage.getIcons().add(character); // иконка приложения
+        ////////////////////////////////////////////////////////////////////////
+        /// настройки панели элементов
+        layout = new GridPane(); // элементы будут выкладываться в виде сетки
+        layout.setPadding(new Insets(5, 5, 5, 5)); // отступы панели от клиентской части окна
+        layout.setStyle("-fx-background-color: rgb(92, 118, 137);"); // фон панели
+        // layout.setGridLinesVisible(true); // сделать видимыми границы сетки
+        /// жуткая процедура установки количества строк и столбцов панели:
+        for (int i = 0; i < height; i++) {
+            RowConstraints rowConst = new RowConstraints();
+            rowConst.setPercentHeight(100.0 / height);
+            layout.getRowConstraints().add(rowConst);
+        }
+        for (int i = 0; i < width; i++) {
+            ColumnConstraints colConst = new ColumnConstraints();
+            colConst.setPercentWidth(100.0 / width);
+            layout.getColumnConstraints().add(colConst);
+        }
+        ////////////////////////////////////////////////////////////////////////
+        /// настройка клиентской области окна: элементы кладём на панель, панель -
+        // на клиентскую область, клиентскую область - привязываем к окну
+        scene = new Scene(layout, 16 * width, 16 * height); // 16 px - размер
+        // одной ячейки лабиринта по ширине и по высоте
+        stage.setScene(scene);
+
+        ////////////////////////////////////////////////////////////////////////
+        // здесь (возможно) будут другие общие настройки
+    }
+
+    public void make(GameObject obj, int rand, int x, int y) {
+        if (r.nextInt(rand) == 0) {
+            maze[y][x] = obj;
+        }
+    }
+
+    public void generateMaze() {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+
+                maze[y][x] = GameObject.HALL; // изначально, лабиринт пустой
+
+                // в 1 случае из 15 - ставим стену
+                make(GameObject.WALL, 15, x, y);
+
+                // в 1 случае из 150 - кладем лекарство
+                make(GameObject.MEDICINE, 150, x, y);
+
+                // в 1 случае из 250 - размещаем врага
+                make(GameObject.ENEMY, 250, x, y);
+                //    enemyCount++;
+
+                // в 1 случае из 150 - размещаем чашку кофе
+                make(GameObject.COFFEE, 150, x, y);
+
+                // в 1 случае из 550 - вешаем медаль
+                make(GameObject.MEDAL, 550, x, y);
+
+                // стены по периметру обязательны
+                if (y == 0 || x == 0 || y == height - 1 | x == width - 1) {
+                    maze[y][x] = GameObject.WALL;
+                }
+
+                // наш персонажик
+                if (x == 0 && y == 2) {
+                    maze[y][x] = GameObject.CHAR;
+                }
+
+                // соседняя ячейка справа от стартовой всегда свободнаx 
+                // выход свободен, и слева от него ячейка свободна
+                if (x == 1 && y == 2 || (y == height - 3 && (x == width - 2 || x == width - 1))) {
+                    maze[y][x] = GameObject.HALL;
+                }
+
+            }
+        }
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (maze[y][x] == GameObject.ENEMY) {
+                    enemyCount++;
+                }
+                if (maze[y][x] == GameObject.MEDAL) {
+                    medals++;
+                }
+            }
+        }
+    }
+
+    public void showMaze() {
+
+        Image current;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+
+                if (maze[y][x] == GameObject.HALL) {
+                    current = hall;
+                } else if (maze[y][x] == GameObject.WALL) {
+                    current = wall;
+                } else if (maze[y][x] == GameObject.CHAR) {
+                    current = character;
+                } else if (maze[y][x] == GameObject.MEDAL) {
+                    current = medal;
+                } else if (maze[y][x] == GameObject.MEDICINE) {
+                    current = medicine;
+                } else if (maze[y][x] == GameObject.COFFEE) {
+                    current = coffee;
+                } else/* if (maze[y][x] == GameObject.ENEMY)*/ {
+                    current = enemy;
+                }
+
+                images[y][x] = new ImageView(current);
+                layout.add(images[y][x], x, y);
+
+            }
+        }
+
+        stage.show();
+    }
+
+    public void clearCell(int x, int y) {
+        maze[y][x] = GameObject.HALL; // делаем пустую ячейку по указанной позиции
+        layout.getChildren().remove(images[y][x]);
+        images[y][x] = new ImageView(hall);
+        layout.add(images[y][x], x, y);
+    }
+
+    // функция уничтожения врагов
+    // при радиусе 1 - это пинок
+    // при радиусе 3 - это взрыв бомбы
+    public void kick(int x, int y, int radius) {
+        musicOff();
+        musicOn("/sound/kick.mp3");
+
+        for (int xx = x - radius; xx <= x + radius; xx++) {
+            for (int yy = y - radius; yy <= y + radius; yy++) {
+                if (yy >= 0 && yy < height && xx >= 0 && xx < width) {
+                    if (maze[yy][xx] == GameObject.ENEMY) {
+                        clearCell(xx, yy);
+                        enemyCount--;
+                    }
+                }
+            }
+        }
+        baseMusic = false;
+    }
+
+    public void checkMedal(int x, int y) {
+        if (maze[y][x] == GameObject.MEDAL) {
+            gatheredMedals++;
+
+        }
+    }
+
+    public void checkEnemy(int x, int y) {
+        if (maze[y][x] == GameObject.ENEMY) {
+            enemyCount--;
+            health -= 20;
+            if (health <= 0) {
+                maze[y][x] = GameObject.CHAR;
+                layout.getChildren().remove(images[y][x]);
+                images[y][x] = new ImageView(character);
+                layout.add(images[y][x], x, y);
+                gameOver("YOU LOSE!!! YOUR HEALTH IS OVER!!! \n\nGAME OVER");
+            } else {
+
+            }
+
+        }
+    }
+
+    public void checkHall(int x, int y) {
+        if (maze[y][x] == GameObject.HALL) {
+            if (!flagMedicine) {
+                flagMedicine = true;
+                maze[old_y][old_x] = GameObject.MEDICINE;
+                layout.getChildren().remove(images[old_y][old_x]);
+                images[old_y][old_x] = new ImageView(medicine);
+                layout.add(images[old_y][old_x], old_x, old_y);
+            }
+            if (putCoffeeBack) {
+                putCoffeeBack = false;
+                maze[old_y][old_x] = GameObject.COFFEE;
+                layout.getChildren().remove(images[old_y][old_x]);
+                images[old_y][old_x] = new ImageView(coffee);
+                layout.add(images[old_y][old_x], old_x, old_y);
+            }
+        }
+    }
+
+    public void checkMedicine(int x, int y) {
+        if (maze[y][x] == GameObject.MEDICINE) {
+            if (health == 100) {
+                flagMedicine = false;
+                old_x = x;
+                old_y = y;
+            } else {
+                health += medicinePlus;
+                //flag_coffee = true;
+                steps = 0;
+                if (health > 100) {
+                    health = 100;
+                }
+
+            }
+        }
+    }
+
+    public void checkCoffee(int x, int y) {
+        if (maze[y][x] == GameObject.COFFEE) {
+            if (steps >= maxSteps) {
+                energy += coffeeEnergy;
+                // flag_coffee = false;
+
+            } else {
+                putCoffeeBack = true;
+                old_x = x;
+                old_y = y;
+            }
+        }
+    }
+
+    public void checkAll(int x, int y) {
+        checkMedal(x, y);
+        checkEnemy(x, y);
+        checkHall(x, y);
+        checkMedicine(x, y);
+        checkCoffee(x, y);
+    }
+
+    public void setSmile(int x, int y) {
+
+        maze[y][x] = GameObject.CHAR;
+        layout.getChildren().remove(images[y][x]);
+        images[y][x] = new ImageView(character);
+        layout.add(images[y][x], x, y);
+
+    }
+
+    // Бомба помещается в текущую позицию. Герой сдвигается на шаг вправо.
+    // Если это невозможно (стена лабиринта), то действие по установке бомбы игнорируется.
+    public void putBomb(int x, int y) {
+
+        maze[y][x] = GameObject.BOMB;
+        layout.getChildren().remove(images[y][x]);
+        images[y][x] = new ImageView(bomb);
+        layout.add(images[y][x], x, y);
+        energy -= energyForBomb;
+    }
+
+    public void checkEnemyDead(int radiusBomb) {
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                if (maze[j][i] == GameObject.BOMB) { // если установлена бомба
+                    for (int xx = i - radiusBomb; xx <= i + radiusBomb; xx++) {
+                        for (int yy = j - radiusBomb; yy <= j + radiusBomb; yy++) {
+                            if (yy >= 0 && yy < height && xx >= 0 && xx < width) {
+                                if (maze[yy][xx] == GameObject.ENEMY) {
+                                    clearCell(xx, yy);
+                                    enemyCount--;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    public void checkHeroDead(int x, int y, int radiusBomb) {
+        for (int xx = x - radiusBomb; xx <= x + radiusBomb; xx++) {
+            for (int yy = y - radiusBomb; yy <= y + radiusBomb; yy++) {
+                if (yy >= 0 && yy < height && xx >= 0 && xx < width) {
+                    if (maze[yy][xx] == GameObject.BOMB) {
+                        clearCell(xx, yy);
+                        gameOver("The BOMB killed you!!!");
+                    }
+                }
+            }
+        }
+
+    }
+
+    public void checkAllMedals() {
+        if (gatheredMedals == medals) {
+            gameOver("YOU ARE WIN!!! \n\n You have gathered " + medals + " medals!!!\n\nGAME OVER");
+        } else {
+            message("You do not have collected all the medals. \n\nContinue the game...");
+        }
+    }
+
+    public void bombDetonation(int x, int y, int radiusBomb) {
+        musicOff();
+        musicOn("/sound/bomb.mp3");
+
+        checkEnemyDead(radiusBomb);
+        checkHeroDead(x, y, radiusBomb);
+        baseMusic = false;
+    }
+
+    // Герой стреляет из бластера. Если на пути есть враг,
+    // то пуля его убивает и уничтожается.
+    // Если врага нет, то пуля рикошетом отражается от стены лабиринта
+    // и убивает героя. Тогда - сообщение и конец игры.
+    public void blaster(int x, int y, int direction) {
+        musicOff();
+        baseMusic = false;
+        musicOn("/sound/bomb.mp3");
+
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                if ((maze[j][i] == GameObject.ENEMY)
+                        && ((direction == 0 && i > x && j == y) || (direction == 1 && i < x && j == y)
+                        || (direction == 2 && j < y && i == x) || (direction == 3 && j > y && i == x))) {
+                    clearCell(i, j); // убиваем врага
+                    energy -= energyForBlaster;
+                    enemyCount--;
+                    return; // и выходим из функции
+                }
+            }
+        }
+
+        clearCell(x, y); // если попали сюда, то на линии выстрела не было врагов
+        gameOver("Ай-яй-яй!!! Как же так?!? Сам себя убил! А был такой молодой ...");
+    }
+
+    public void gameOver(String str) {
+        message("YOU LOSE!!! " + str + "\n\nGAME OVER");
+        musicOff(); // выключаем трек
+        System.exit(0);
+    }
+
+    public void message(String str) {
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle("Information Dialog");
+        alert.setHeaderText(null);
+        alert.setContentText(str);
+        alert.showAndWait();
+    }
+
+    public void gameProcess() {
+        scene.setOnKeyPressed((KeyEvent t) -> {
+            if (!baseMusic) {
+                musicOn("/sound/basicMusic.mp3");
+                baseMusic = true;
+            }
+            if (enemyCount <= 0) {
+                gameOver("Победа! Враги уничтожены!!!");
+            }
+            clearCell(smileX, smileY);
+            // в принципе, проверки smileX > 0 и smileY > 0 можем и не делать, т.к. все равно по периметру стена
+            // а если это проверять, то тогда кж проверять и на выход за границы height-1 и widtn-1 
+            if (t.getCode() == KeyCode.RIGHT && smileX == width - 1 && smileY == height - 3) {
+                checkAllMedals();
+            } else {
+                if (t.getCode() == KeyCode.RIGHT && maze[smileY][smileX + 1] != GameObject.WALL) {
+                    smileX++;
+                    direction = 0;
+                } else if (t.getCode() == KeyCode.LEFT && maze[smileY][smileX - 1] != GameObject.WALL && smileX > 0) {
+                    smileX--;
+                    direction = 1;
+                }
+                if (t.getCode() == KeyCode.UP && maze[smileY - 1][smileX] != GameObject.WALL) {
+                    smileY--;
+                    direction = 2;
+                } else if (t.getCode() == KeyCode.DOWN && maze[smileY + 1][smileX] != GameObject.WALL) {
+                    smileY++;
+                    direction = 3;
+                } else if (t.getCode() == KeyCode.ENTER && maze[smileY][smileX + 1] != GameObject.WALL) {
+                    if (energy - energyForBomb < 0) {
+                        gameOver("YOUR ENERGY IS OVER!!!");
+                    } else {
+                        putBomb(smileX, smileY);
+                        smileX++; // после установки бомбы смайлик перейдет на шаг вправо
+                    }
+                } else if (t.getCode() == KeyCode.SPACE) {
+                    bombDetonation(smileX, smileY, radiusBomb);
+
+                } else if (t.getCode() == KeyCode.TAB) {
+                    if (energy - energyForBlaster < 0) {
+                        gameOver("YOUR ENERGY IS OVER!!!");
+                    } else {
+                        blaster(smileX, smileY, direction);
+                    }
+                }
+                steps++;
+                energy--;
+                if (energy == 0) { // энергии ноль, игра окончена
+                    gameOver("YOUR ENERGY IS OVER!!!");
+                } else if (t.getCode() == KeyCode.SHIFT) {
+                    if (energy > energyForKick) { // можно делать удар ногой
+
+                        // 1 уже вычелся при обработке нажатия клавиши
+                        kick(smileX, smileY, radiusKick); // убиваем врагов в радиусе 1
+
+                        energy -= leftEnergy;
+
+                    } else { // не хватает энергии для удара ногой
+                        message("You haven't enough energy to use KICK");
+                    }
+                }
+
+            }
+            checkAll(smileX, smileY);
+            setSmile(smileX, smileY);
+            stage.setTitle("Java FX Maze: собрано" + gatheredMedals + " медалей, осталось здоровья - " + health + " %, энергии - " + energy + " юнитов, живых врагов - " + enemyCount); // установка текста в заголовке окна
+        }
+        );
+    }
+}
